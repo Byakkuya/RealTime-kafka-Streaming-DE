@@ -2,6 +2,7 @@ from confluent_kafka import Producer
 from confluent_kafka.admin import AdminClient, NewTopic
 import logging
 import json
+import threading
 
 import random
 import time
@@ -81,9 +82,8 @@ def delivery_report(err, msg):
         print(f"Record {msg.key()} successfully produced to {msg.topic()} [{msg.partition()}] at offset {msg.offset()}")
      
 
-if __name__ == "__main__":
-    create_topic(TOPIC_NAME)
 
+def produce_transaction(thread_id):
     while True:
         transaction = generate_transaction()
 
@@ -95,7 +95,32 @@ if __name__ == "__main__":
                 on_delivery = delivery_report
 
             )
-            print(f"Produced transaction: {transaction}")
+            print(f" Thread {thread_id} ; Produced transaction: {transaction}")
             producer.flush()
         except Exception as e:
             print(f"Failed to produce transaction: {e}")
+
+
+
+def produce_in_parallel(num_threads):
+
+    threads = []
+    try:
+        for i in range(num_threads):
+            thread = threading.Thread(target=produce_transaction, args=(i,), daemon=True)
+            thread.start()
+            threads.append(thread)
+
+        for thread in threads:
+            thread.join()
+
+    except Exception as e:
+        print(f'error message: {e}  ')
+
+
+    
+
+
+if __name__ == "__main__":
+    create_topic(TOPIC_NAME)
+    produce_in_parallel(num_threads=3)
